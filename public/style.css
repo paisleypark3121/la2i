@@ -1,0 +1,15 @@
+* {
+    /* color: green; */
+    font-family: 'OpenDyslexic';
+    font-size: 20px;
+}
+
+textarea,div,input {
+    font-family: 'OpenDyslexic';
+    font-size: 20px;
+}
+
+@font-face {
+    font-family: 'OpenDyslexic';
+    src: url("OpenDyslexic-Regular.otf") format('opentype');
+}
