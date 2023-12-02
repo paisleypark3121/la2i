@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from typing import Optional
 
 from gtts import gTTS 
 from io import BytesIO
@@ -54,6 +55,21 @@ load_dotenv()
 # prompt = ChatPromptTemplate.from_messages(messages)
 # chain_type_kwargs = {"prompt": prompt}
 
+
+@cl.on_chat_start
+async def on_chat_start():
+    load_dotenv()
+    app_user = cl.user_session.get("user")
+    await cl.Message(f"Hello {app_user.username}").send()
+
+@cl.password_auth_callback
+def auth_callback(username: str, password: str) -> Optional[cl.AppUser]:
+    _username=os.environ.get('LA2I_USERNAME')
+    _password=os.environ.get('LA2I_PASSWORD')
+    if (username.upper(), password) == (_username, _password):
+        return cl.AppUser(username=_username, role="USER", provider="credentials")
+    else:
+        return None
 
 @cl.action_callback("Local File")
 async def on_action(action):
