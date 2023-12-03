@@ -1,5 +1,5 @@
 ---
-title: Chainlit Docker
+title: la2i
 emoji: 📉
 colorFrom: yellow
 colorTo: red
@@ -21,11 +21,11 @@ hide_cot = false
 
 ---
 
-in order to generate automatically the requirements.txt file: 
+in order to generate automatically the requirements.txt file:
 OPTION1: pipreqs (pip install pipreqs) and then use the command: pipreqs . --force
 OPTION2: pip freeze > requirements.txt
 
---- 
+---
 
 CHAINLIT AUTHENTICATION
 In ordero to handle Chainlit authentication it is necessary to generate a Chainlit key:
@@ -47,14 +47,23 @@ TUTORIAL - DEPLOY ON HUGGINGFACE SPACE
 3. Create access token in HuggingFace: settings -> access tokens -> create a new token in WRITE mode
 
 4. Github secret: in Github repo -> settings -> secret and variables -> actions -> new repo secret
-create the HF_TOKEN with the value of the token configured in HuggingFace
+   create the HF_TOKEN with the value of the token configured in HuggingFace
 
 5. Create the .github/workflows/ directory to store your workflow files:
+
 - actions_onpull.yaml
 - actions_onpush.yaml
 
 6. set origin: git remote set-url origin https://GITHUB_USERNAME:HF_TOKEN@huggingface.co/spaces/HF_USER/HF_SPACE_NA;E
 
 7. git pull origin
+if we receive an error such as:
+0d39db0...eadd02d main -> origin/main (forced update)
+fatal: refusing to merge unrelated histories
+it is necessary to use the command:
+git pull origin main --allow-unrelated-histories
+but BEWARE: the readme.md file will be overwritten, therefore keep your copy!
 
+8. change again the url:
+git remote set-url origin GITHUB_URL_HERE
 
