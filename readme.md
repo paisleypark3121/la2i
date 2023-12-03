@@ -67,3 +67,10 @@ but BEWARE: the readme.md file will be overwritten, therefore keep your copy!
 8. change again the url:
 git remote set-url origin GITHUB_URL_HERE
 
+9. perform the changes and then push
+
+in order to handle authentication on HuggingFace it is necessary to configure the chainlit secret in the HuggingFace space:
+
+1. access the HuggingFace space associated to the application
+
+2. settings -> Variables and secrets -> secrets -> new secret -> add CHAINLIT_AUTH_SECRET with the value generated
