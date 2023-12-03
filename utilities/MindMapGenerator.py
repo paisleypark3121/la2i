@@ -1,42 +1,60 @@
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
-import pygraphviz as pgv
 import json
 
+import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import graphviz_layout
 
 system_message_mono_topic = "You are a helpful assistant that generates "\
     "a coded Mind Map or Conceptual Map given a base topic. "\
     "Each map has to contain a maximum of 3 concepts and all connections must be labelled."\
-    "The output has to be the CODE to be used in PyGraphviz in order to have the map done; "\
+    "The output has to be the CODE to be used in NetworkX in order to have the map done; "\
     "this output has to contain ONLY the code needed without any import."\
-    "As an example, the output has to start with '''graph = pgv.AGraph(directed=True);"\
+    "As an example, the output has to start with '''G = nx.Graph();"\
     "For example if the user asks for the topic: atom, you need to provide as output: "\
-    '''graph = pgv.AGraph(directed=True)
-graph.add_node("Atom")
-graph.add_node("Proton\")
-graph.add_node("Electron")
-graph.add_edge("Atom", "Proton", label="contains")
-graph.add_edge("Atom", "Electron", label="contains")
-graph.draw("atom.png", format="png", prog="dot")'''
+    '''G = nx.Graph()
+G.add_node("Atomo", label="Atomo")
+G.add_node("Nucleo", label="Nucleo")
+G.add_node("Protoni", label="Protoni")
+G.add_node("Neutroni", label="Neutroni")
+G.add_node("Elettroni", label="Elettroni")
+G.add_edge("Atomo", "Nucleo")
+G.add_edge("Nucleo", "Protoni")
+G.add_edge("Nucleo", "Neutroni")
+G.add_edge("Atomo", "Elettroni")
+node_labels = nx.get_node_attributes(G, 'label')
+node_sizes = [len(label) * 200 for label in node_labels]
+pos = graphviz_layout(G, prog="dot")
+nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
+plt.savefig("atom.png")'''
 
 system_message_context_topic = "You are a helpful assistant that generates "\
     "a coded Mind Map or Conceptual Map given a [context] of information on a base [topic]. "\
     "Each map has to contain a maximum of 5 concepts and all connections must be labelled."\
-    "The output has to be the CODE to be used in PyGraphviz in order to have the map done; "\
+    "The output has to be the CODE to be used in NetworkX in order to have the map done; "\
     "this output has to contain ONLY the code needed without any import."\
     "As an example, the output has to start with "\
-    "graph = pgv.AGraph(directed=True); "\
+    "G = nx.Graph(); "\
     "has to finish with "\
-    "graph.draw([topic], format=\"png\", prog=\"dot\") "\
+    "plt.savefig([topic]) "\
     "the instructions in the middle must contain nodes and labels according to the given [context]."\
     "An output example could be: "\
-    '''graph = pgv.AGraph(directed=True)
-graph.add_node("Atom")
-graph.add_node("Proton\")
-graph.add_node("Electron")
-graph.add_edge("Atom", "Proton", label="contains")
-graph.add_edge("Atom", "Electron", label="contains")
-graph.draw("atom.png", format="png", prog="dot")'''
+    '''G = nx.Graph()
+G.add_node("Atomo", label="Atomo")
+G.add_node("Nucleo", label="Nucleo")
+G.add_node("Protoni", label="Protoni")
+G.add_node("Neutroni", label="Neutroni")
+G.add_node("Elettroni", label="Elettroni")
+G.add_edge("Atomo", "Nucleo")
+G.add_edge("Nucleo", "Protoni")
+G.add_edge("Nucleo", "Neutroni")
+G.add_edge("Atomo", "Elettroni")
+node_labels = nx.get_node_attributes(G, 'label')
+node_sizes = [len(label) * 200 for label in node_labels]
+pos = graphviz_layout(G, prog="dot")
+nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
+plt.savefig("atom.png")'''
 
 human_message_template="Please generate the Mind Map related to the following [topic] and based on the given [context]."\
     "[topic]: {topic}"\
