@@ -13,7 +13,7 @@ ABOVE SECTION IS FOR DOCKER: it must be the first instruction in the readme.md f
 
 Start chainlit: chainlit run app.py -w
 
-Please create an .env file and insert your openai api key:
+Please create an .env file and insert your api keys:
 OPENAI_API_KEY=**USE YOUR KEY**
 
 Hide the chain of thought details from the user in the UI:
@@ -32,6 +32,7 @@ In ordero to handle Chainlit authentication it is necessary to generate a Chainl
 chainlit create-secret
 This command generates a key that has to be inserted in the .env file
 (BEWARE: it is necessary that the KEY doesn't contain strane patterns as = in the middle; you recognize that it is correct in .env file in VSCODE because CHAINLIT_AUTH_SECRET is blue and its value is ALL WHITE)
+CHAINLIT_AUTH_SECRET=**USE YOUR KEY**
 It is necessary to insert the default ACCESS username and password:
 LA2I_USERNAME=**USE YOUR KEY**
 LA2I_PASSWORD=**USE YOUR KEY**
@@ -74,3 +75,5 @@ in order to handle authentication on HuggingFace it is necessary to configure th
 1. access the HuggingFace space associated to the application
 
 2. settings -> Variables and secrets -> secrets -> new secret -> add CHAINLIT_AUTH_SECRET with the value generated
+
+3. in case you want to store username / password as secret, add also those values in this section (this application uses LA2I_USERNAME and LA2I_PASSWORD)
