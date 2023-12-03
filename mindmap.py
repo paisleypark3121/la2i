@@ -2,6 +2,10 @@ from dotenv import load_dotenv
 import os
 import pygraphviz as pgv
 
+import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import graphviz_layout
+
 
 load_dotenv()
 
@@ -60,61 +64,62 @@ def mindmap_test():
     # Layout e renderizzazione con le nuove etichette
     A.layout(prog='dot')
     A.draw("rivoluzione_francese_etichette.png")
-
-    
+   
 def execute_concept_map_code(code):
     # Esegui il codice
     exec(code)
 
-# Esempio di codice restituito in formato JSON
-json_code = '''
-graph = pgv.AGraph(directed=True)
+def json_code_test():
+    # Esempio di codice restituito in formato JSON
+    json_code = '''
+    graph = pgv.AGraph(directed=True)
 
-# Nodo principale
-graph.add_node("Cellula")
+    # Nodo principale
+    graph.add_node("Cellula")
 
-# Sottonodi con etichette agli archi
-graph.add_node("Membrana Cellulare", shape="box")
-graph.add_node("Nucleo", shape="box")
-graph.add_node("Organelle", shape="box")
+    # Sottonodi con etichette agli archi
+    graph.add_node("Membrana Cellulare", shape="box")
+    graph.add_node("Nucleo", shape="box")
+    graph.add_node("Organelle", shape="box")
 
-graph.add_edge("Cellula", "Membrana Cellulare", label="Struttura Esterna")
-graph.add_edge("Cellula", "Nucleo", label="Centro di Controllo")
-graph.add_edge("Cellula", "Organelle", label="Componenti Funzionali")
+    graph.add_edge("Cellula", "Membrana Cellulare", label="Struttura Esterna")
+    graph.add_edge("Cellula", "Nucleo", label="Centro di Controllo")
+    graph.add_edge("Cellula", "Organelle", label="Componenti Funzionali")
 
-# Visualizzazione
-graph.layout(prog="dot")
-graph.draw("cellula_concept_map.png", format="png", prog="dot")
-'''
+    # Visualizzazione
+    graph.layout(prog="dot")
+    graph.draw("cellula_concept_map.png", format="png", prog="dot")
+    '''
 
-# Chiamare la funzione per eseguire il codice
-#execute_concept_map_code(json_code)
+    execute_concept_map_code(json_code)
 
-#mindmap_test()
+def execute_networkx():
 
-from gtts import gTTS 
-from io import BytesIO
-import pygame
+    # Creazione del grafo
+    G = nx.Graph()
 
-text = "Hello World!"
+    # Aggiungi i nodi con etichette
+    G.add_node("Atomo", label="Atomo")
+    G.add_node("Nucleo", label="Nucleo")
+    G.add_node("Protoni", label="Protoni")
+    G.add_node("Neutroni", label="Neutroni")
+    G.add_node("Elettroni", label="Elettroni")
 
-# get audio from server
-tts = gTTS(text=text, lang='en')
+    # Collega i nodi
+    G.add_edge("Atomo", "Nucleo")
+    G.add_edge("Nucleo", "Protoni")
+    G.add_edge("Nucleo", "Neutroni")
+    G.add_edge("Atomo", "Elettroni")
 
-# convert to file-like object
-fp = BytesIO()
-tts.write_to_fp(fp)
-fp.seek(0)
+    # Calcola la lunghezza del testo nei nodi
+    node_labels = nx.get_node_attributes(G, 'label')
+    node_sizes = [len(label) * 200 for label in node_labels]
 
-# --- play it ---
+    # Disegna il grafo
+    pos = graphviz_layout(G, prog="dot")
+    nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
 
-import pygame
+    # Mostra il grafico
+    plt.show()
 
-print('fp')
-
-pygame.init()
-pygame.mixer.init()
-pygame.mixer.music.load(fp)
-pygame.mixer.music.play()
-while pygame.mixer.music.get_busy():
-    pygame.time.Clock().tick(10)
+execute_networkx()
