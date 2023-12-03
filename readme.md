@@ -52,3 +52,9 @@ create the HF_TOKEN with the value of the token configured in HuggingFace
 5. Create the .github/workflows/ directory to store your workflow files:
 - actions_onpull.yaml
 - actions_onpush.yaml
+
+6. set origin: git remote set-url origin https://GITHUB_USERNAME:HF_TOKEN@huggingface.co/spaces/HF_USER/HF_SPACE_NA;E
+
+7. git pull origin
+
+
