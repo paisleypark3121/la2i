@@ -40,4 +40,15 @@ LA2I_PASSWORD=**USE YOUR KEY**
 
 TUTORIAL - DEPLOY ON HUGGINGFACE SPACE
 
-Create the Dockerfile
+1. Create the Dockerfile: see Dockerfile file
+
+2. Create a new space in HuggingSpace with deploy option Docker
+
+3. Create access token in HuggingFace: settings -> access tokens -> create a new token in WRITE mode
+
+4. Github secret: in Github repo -> settings -> secret and variables -> actions -> new repo secret
+create the HF_TOKEN with the value of the token configured in HuggingFace
+
+5. Create the .github/workflows/ directory to store your workflow files:
+- actions_onpull.yaml
+- actions_onpush.yaml
