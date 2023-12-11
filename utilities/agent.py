@@ -45,8 +45,8 @@ def retrieval_agent(
     tool_name,
     tool_description,
     #model_name="gpt-3.5-turbo",
-    model_name="gpt-3.5-turbo-0613",
-    #model_name="gpt-4-0613",
+    #model_name="gpt-3.5-turbo-0613",
+    model_name="gpt-4-0613",
     temperature=0,
     k=3,
     language_code="it"):
@@ -104,6 +104,7 @@ def retrieval_agent(
             tools=tools,
             memory=conversational_memory,
             verbose=True,
+            handle_parsing_errors=True,
             max_iterations=k, #caps the agent at taking a certain number of steps
             early_stopping_method="generate", #By default, the early stopping uses the force method which just returns that constant string. Alternatively, you could specify the generate method which then does one FINAL pass through the LLM to generate an output
         )
@@ -116,6 +117,7 @@ def retrieval_agent(
             llm=llm,
             memory=conversational_memory,
             verbose=True,
+            handle_parsing_errors=True,
             max_iterations=k, #caps the agent at taking a certain number of steps
             early_stopping_method="generate", #By default, the early stopping uses the force method which just returns that constant string. Alternatively, you could specify the generate method which then does one FINAL pass through the LLM to generate an output
         )

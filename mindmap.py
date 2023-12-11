@@ -4,8 +4,17 @@ import os
 
 import networkx as nx
 import matplotlib.pyplot as plt
-from networkx.drawing.nx_pydot import graphviz_layout
+from networkx.drawing.nx_agraph import graphviz_layout
 
+template='''pos = graphviz_layout(G, prog="dot")
+    node_labels = nx.get_node_attributes(G, 'label')
+    node_sizes = [len(label) * 200 for label in node_labels]
+    edge_labels = {}
+    for edge in G.edges():
+        node1, node2 = edge
+        edge_labels[edge] = G[node1][node2]['label']
+    nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrows=True, arrowsize=20)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red')'''
 
 load_dotenv()
 
@@ -93,33 +102,29 @@ load_dotenv()
 
 #     execute_concept_map_code(json_code)
 
-# def execute_networkx():
+def execute_networkx():
 
-#     # Creazione del grafo
-#     G = nx.Graph()
+    G = nx.Graph()
+    G.add_node("atom", label="atom")
+    G.add_node("nucleus", label="nucleus")
+    G.add_node("protons", label="protons")
+    G.add_node("neutrons", label="neutrons")
+    G.add_node("electrons", label="electrons")
+    G.add_edge("atom", "nucleus", label="contains")
+    G.add_edge("nucleus", "protons", label="contains")
+    G.add_edge("nucleus", "neutrons", label="contains")
+    G.add_edge("atom", "electrons", label="contains")
+    pos = graphviz_layout(G, prog="dot")
+    node_labels = nx.get_node_attributes(G, 'label')
+    node_sizes = [len(label) * 200 for label in node_labels]
+    edge_labels = dict()
+    for edge in G.edges():
+        node1, node2 = edge
+        edge_labels[edge] = G[node1][node2]['label']
+    nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red')
 
-#     # Aggiungi i nodi con etichette
-#     G.add_node("Atomo", label="Atomo")
-#     G.add_node("Nucleo", label="Nucleo")
-#     G.add_node("Protoni", label="Protoni")
-#     G.add_node("Neutroni", label="Neutroni")
-#     G.add_node("Elettroni", label="Elettroni")
+    plt.savefig("atom.png")
+    plt.show()
 
-#     # Collega i nodi
-#     G.add_edge("Atomo", "Nucleo")
-#     G.add_edge("Nucleo", "Protoni")
-#     G.add_edge("Nucleo", "Neutroni")
-#     G.add_edge("Atomo", "Elettroni")
-
-#     # Calcola la lunghezza del testo nei nodi
-#     node_labels = nx.get_node_attributes(G, 'label')
-#     node_sizes = [len(label) * 200 for label in node_labels]
-
-#     # Disegna il grafo
-#     pos = graphviz_layout(G, prog="dot")
-#     nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
-
-#     # Mostra il grafico
-#     plt.show()
-
-# execute_networkx()
+execute_networkx()

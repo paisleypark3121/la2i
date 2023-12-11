@@ -34,28 +34,6 @@ persist_directory = 'chroma'
 
 load_dotenv()
 
-# system_template = """Use the following pieces of context to answer the users question.
-# If you don't know the answer, just say that you don't know, don't try to make up an answer.
-# ALWAYS return a "SOURCES" part in your answer.
-# The "SOURCES" part should be a reference to the source of the document from which you got your answer.
-
-# Example of your response should be:
-
-# The answer is foo
-# SOURCES: xyz
-
-
-# Begin!
-# ----------------
-# {summaries}"""
-# messages = [
-#     SystemMessagePromptTemplate.from_template(system_template),
-#     HumanMessagePromptTemplate.from_template("{question}"),
-# ]
-# prompt = ChatPromptTemplate.from_messages(messages)
-# chain_type_kwargs = {"prompt": prompt}
-
-
 @cl.on_chat_start
 async def on_chat_start():
     load_dotenv()
@@ -97,7 +75,6 @@ async def on_action(action):
     #print(type(file))
     if isinstance(file,cl.types.AskFileResponse):
         local_file_name=pre_save_file(file.name,file.content)
-
 
     agent=retrieval_agent(
         file=local_file_name,
@@ -143,7 +120,6 @@ async def on_action(action):
 
         await cl.Message(content=f"Executed {action.name}").send()
         
-    
 @cl.action_callback("Text To Speech")
 async def on_action(action):
     tts = gTTS(text=action.value, lang='en')
@@ -173,8 +149,10 @@ async def on_action(action):
         data["name"]=res['content']
         name=data["name"]
         topic=name
+        print(topic)
         cl.user_session.set("topic", topic)
-        response=generateMindMap_context_topic(name,text)
+        #response=generateMindMap_context_topic(name,text)
+        response=generateMindMap_mono_topic(name,text)
         elements = [
             cl.Image(name=name, display="inline", path=response)
         ]
@@ -222,15 +200,14 @@ async def main(message: cl.Message):
 
         prompt=message.content
         if tool:
-            prompt="Please use the tool "+tool+" to produce the output"
-        # Call the chain asynchronously
+            prompt="Please use the tool "+tool+" to produce the output for the user request: "+message.content
+            
         response = await agent.acall(
             prompt, 
             callbacks=[cl.AsyncLangchainCallbackHandler(
                 stream_final_answer=True,
                 answer_prefix_tokens=answer_prefix_tokens
             )])
-        #response = agent(message.content)
 
         answer = response["output"]
 
