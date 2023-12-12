@@ -40,12 +40,10 @@ async def on_chat_start():
     global model_name
     load_dotenv()
     app_user = cl.user_session.get("user")
-    print("LOGIN")
-    #print(app_user)
     if app_user==os.environ.get('LA2I_USERNAME_DSA'):
         model_name=os.environ.get('FINE_TUNED_MODEL')
     #print("START: "+model_name)
-    await cl.Message(f"Hello {app_user.username}").send()
+    #await cl.Message(f"Hello {app_user.username}").send()
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str) -> Optional[cl.AppUser]:
@@ -179,12 +177,16 @@ async def on_action(action):
 @cl.on_chat_start
 async def on_chat_start():
     # Sending an action button within a chatbot message
+    app_user = cl.user_session.get("user")
+    await cl.Message(f"Hello {app_user.username}").send()
+    
     actions = [
         cl.Action(name="Local File", value="load", description="Load Data from File"),
         cl.Action(name="URL", value="load", description="Load Data from URL")
     ]
-
     await cl.Message(content="Click to Load data", actions=actions).send()
+
+    #await cl.Message(f"This is the model used: {model_name}").send()
 
     embedding=OpenAIEmbeddings()
 
