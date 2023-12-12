@@ -114,6 +114,7 @@ def generateMindMap_mono_topic_old(name,text,temperature=0,model_name='gpt-4-061
     return name.replace(" ", "_")+".png"
 
 def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-4-0613'):
+#def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-3.5-turbo-1106'):
 
     llm = ChatOpenAI(
         temperature=temperature,

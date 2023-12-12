@@ -46,7 +46,8 @@ def retrieval_agent(
     tool_description,
     #model_name="gpt-3.5-turbo",
     #model_name="gpt-3.5-turbo-0613",
-    model_name="gpt-4-0613",
+    #model_name="gpt-4-0613",
+    model_name="gpt-3.5-turbo-1106",
     temperature=0,
     k=3,
     language_code="it"):
@@ -75,6 +76,7 @@ def retrieval_agent(
         return_messages=True
     )
 
+    print("RETRIEVAL: "+model_name)
     llm=ChatOpenAI(
         model_name=model_name,
         temperature=temperature,

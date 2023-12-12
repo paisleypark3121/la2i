@@ -31,27 +31,42 @@ import chainlit as cl
 
 save_directory='./files'
 persist_directory = 'chroma'
+model_name="gpt-3.5-turbo-0613"
 
 load_dotenv()
 
 @cl.on_chat_start
 async def on_chat_start():
+    global model_name
     load_dotenv()
     app_user = cl.user_session.get("user")
+    print("LOGIN")
+    #print(app_user)
+    if app_user==os.environ.get('LA2I_USERNAME_DSA'):
+        model_name=os.environ.get('FINE_TUNED_MODEL')
+    #print("START: "+model_name)
     await cl.Message(f"Hello {app_user.username}").send()
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str) -> Optional[cl.AppUser]:
+    global model_name
     _username=os.environ.get('LA2I_USERNAME')
     _password=os.environ.get('LA2I_PASSWORD')
+    _username_dsa=os.environ.get('LA2I_USERNAME_DSA')
+    _password_dsa=os.environ.get('LA2I_PASSWORD_DSA')
     if (username.upper(), password) == (_username, _password):
+        print("CALL: "+model_name)
+        return cl.AppUser(username=_username, role="USER", provider="credentials")
+    elif (username.upper(), password) == (_username_dsa, _password_dsa):
+        model_name=os.environ.get('FINE_TUNED_MODEL')
+        print("CALL: "+model_name)
         return cl.AppUser(username=_username, role="USER", provider="credentials")
     else:
         return None
 
 @cl.action_callback("Local File")
 async def on_action(action):
-
+    global model_name
     files = None
 
     # Wait for the user to upload a file
@@ -82,7 +97,8 @@ async def on_action(action):
         embedding=embedding,
         overwrite=True,
         tool_name=file.name,
-        tool_description=file.name)
+        tool_description=file.name,
+        model_name=model_name)
     
     cl.user_session.set("agent", agent)
     cl.user_session.set("tool", file.name)
@@ -113,7 +129,8 @@ async def on_action(action):
             embedding=embedding,
             overwrite=True,
             tool_name=os.path.basename(local_file_name),
-            tool_description=os.path.basename(local_file_name))
+            tool_description=os.path.basename(local_file_name),
+            model_name=model_name)
         
         cl.user_session.set("agent", agent)
         cl.user_session.set("tool", os.path.basename(local_file_name))
@@ -149,7 +166,7 @@ async def on_action(action):
         data["name"]=res['content']
         name=data["name"]
         topic=name
-        print(topic)
+        #print(topic)
         cl.user_session.set("topic", topic)
         #response=generateMindMap_context_topic(name,text)
         response=generateMindMap_mono_topic(name,text)
@@ -177,7 +194,8 @@ async def on_chat_start():
         embedding=embedding,
         overwrite=True,
         tool_name=None,
-        tool_description=None)
+        tool_description=None,
+        model_name=model_name)
     
     cl.user_session.set("embedding", embedding)
     cl.user_session.set("agent", agent)
