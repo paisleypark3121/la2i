@@ -60,7 +60,7 @@ def auth_callback(username: str, password: str) -> Optional[cl.AppUser]:
     elif (username.upper(), password) == (_username_dsa, _password_dsa):
         model_name=os.environ.get('FINE_TUNED_MODEL')
         print("CALL: "+model_name)
-        return cl.AppUser(username=_username, role="USER", provider="credentials")
+        return cl.AppUser(username=_username_dsa, role="USER", provider="credentials")
     else:
         return None
 
