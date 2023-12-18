@@ -1,11 +1,12 @@
 import os
 from dotenv import load_dotenv
 import re
+import shutil
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.llms import OpenAI
+#from langchain.llms import OpenAI as LangChainOpenAI
 from langchain.chains import (
     RetrievalQA,
     ConversationalRetrievalChain
@@ -42,6 +43,10 @@ def vectordb_exists(persist_directory):
 def create_vectordb_from_file(filename,persist_directory,embedding,overwrite=False,chunk_size=1200,chunk_overlap=200):
     if vectordb_exists(persist_directory)==False or overwrite==True:
 
+        if vectordb_exists(persist_directory):
+            if os.path.isdir(persist_directory):
+                shutil.rmtree(persist_directory)
+
         if filename.endswith('.txt'):
             try:
                 loader = TextLoader(filename,encoding="utf-8")
@@ -55,7 +60,7 @@ def create_vectordb_from_file(filename,persist_directory,embedding,overwrite=Fal
             except Exception as e:
                 raise ValueError(f"Non è possibile caricare il file {filename}: {e}")
         else:
-            raise ValueError(f"Etensione del file {filename} non riconosciuta: {e}")
+            raise ValueError(f"Estensione del file {filename} non riconosciuta: {e}")
 
         if not documents:
             raise ValueError(f"Il documento {filename} è vuoto o non valido: {e}")
@@ -72,12 +77,16 @@ def create_vectordb_from_file(filename,persist_directory,embedding,overwrite=Fal
 
         # persist to vectordb: in a notebook, we should call persist() to ensure the embeddings are written to disk
         # This isn't necessary in a script: the database will be automatically persisted when the client object is destroyed
-        return Chroma.from_documents(
+        vectordb=Chroma.from_documents(
             documents=splits, 
             embedding=embedding, 
             #metadatas=metadatas,
-            persist_directory=persist_directory
+            persist_directory=persist_directory,
+            collection_metadata={"hnsw:space": "cosine"},
         )
+        #vectordb.persist()
+
+        return vectordb
     else:
         return load_vectordb(persist_directory=persist_directory,embedding=embedding)
 

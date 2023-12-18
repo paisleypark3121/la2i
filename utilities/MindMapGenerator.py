@@ -1,176 +1,107 @@
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
-from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from langchain.prompts import PromptTemplate
 import json
+from openai import OpenAI
+import time
 
 import networkx as nx
 import matplotlib.pyplot as plt
-#from networkx.drawing.nx_pydot import graphviz_layout
 from networkx.drawing.nx_agraph import graphviz_layout
-
-system_message_mono_topic = "You are a helpful assistant that generates "\
-    "a coded Mind Map or Conceptual Map given a base topic. "\
-    "Each map has to contain a maximum of 3 concepts and all connections must be labelled."\
-    "The output has to be the CODE to be used in NetworkX in order to have the map done; "\
-    "this output has to contain ONLY the code needed without any import."\
-    "As an example, the output has to start with '''G = nx.Graph();"\
-    "For example if the user asks for the topic: atom, you need to provide as output: "\
-    '''G = nx.Graph()
-G.add_node("Atomo", label="Atomo")
-G.add_node("Nucleo", label="Nucleo")
-G.add_node("Protoni", label="Protoni")
-G.add_node("Neutroni", label="Neutroni")
-G.add_node("Elettroni", label="Elettroni")
-G.add_edge("Atomo", "Nucleo")
-G.add_edge("Nucleo", "Protoni")
-G.add_edge("Nucleo", "Neutroni")
-G.add_edge("Atomo", "Elettroni")
-node_labels = nx.get_node_attributes(G, 'label')
-node_sizes = [len(label) * 200 for label in node_labels]
-pos = graphviz_layout(G, prog="dot")
-nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrowsize=20)
-plt.savefig("atom.png")'''
-
-system_message_context_topic = "You are a helpful assistant that generates "\
-    "a coded Mind Map or Conceptual Map given a [context] of information on a base [topic]. "\
-    "Each map has to contain a maximum of 5 concepts and all connections must be labelled."\
-    "The output has to be the CODE to be used in NetworkX in order to have the map done; "\
-    "this output has to contain ONLY the code needed without any import."\
-    "As an example, the output has to start with "\
-    "G = nx.Graph(); "\
-    "has to finish with "\
-    "plt.savefig([topic]) "\
-    "the instructions in the middle must contain nodes and labels according to the given [context]."\
-    "An output example could be: "\
-    '''G = nx.Graph()
-G.add_node("Atomo", label="Atomo")
-G.add_node("Nucleo", label="Nucleo")
-G.add_node("Protoni", label="Protoni")
-G.add_node("Neutroni", label="Neutroni")
-G.add_node("Elettroni", label="Elettroni")
-G.add_edge("Atomo", "Nucleo")
-G.add_edge("Nucleo", "Protoni")
-G.add_edge("Nucleo", "Neutroni")
-G.add_edge("Atomo", "Elettroni")
-node_labels = nx.get_node_attributes(G, 'label')
-node_sizes = [len(label) * 200 for label in node_labels]
-pos = graphviz_layout(G, prog="dot")
-nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrows=True, arrowsize=20)
-plt.savefig("atom.png")'''
 
 template = """You are a helpful assistant that generates a coded Mind Map given a specific [topic] and a [context].
 Each map has to contain a maximum of 3 concepts and all connections must be labelled.
 The output has to be the NetworkX python code needed to produce the mind map. This output has to contain only the code needed without any import.
 As an example, the output has to start with: 
-G = nx.Graph(); 
+mm = nx.Graph(); 
 As an example, if the user asks for: 
 [topic] atom
 [context] An atom is the fundamental building block of matter, consisting of two main components: electrons and nucleus. Electrons are negatively charged subatomic particles that orbit the nucleus in specific energy levels or electron shells; the nucleus is the central, densely packed core of an atom, where most of its mass is concentrated and contains two types of particles: protons (positively charged subatomic particles) and neutrons (electrically neutral subatomic particles).
 
 coded mind map:
-G = nx.Graph()
-G.add_node("atom", label="atom")
-G.add_node("nucleus", label="nucleus")
-G.add_node("protons", label="protons")
-G.add_node("neutrons", label="neutrons")
-G.add_node("electrons", label="electrons")
-G.add_edge("atom", "nucleus", label="composition")
-G.add_edge("nucleus", "protons", label="compositions")
-G.add_edge("nucleus", "neutrons", label="composition")
-G.add_edge("atom", "electrons", label="composition")
-pos = graphviz_layout(G, prog="dot")
-node_labels = nx.get_node_attributes(G, 'label')
-node_sizes = [len(label) * 200 for label in node_labels]
-edge_labels = dict()
-for edge in G.edges():
+mm = nx.Graph()
+mm.clear()
+mm.add_node("atom", label="atom")
+mm.add_node("nucleus", label="nucleus")
+mm.add_node("protons", label="protons")
+mm.add_node("neutrons", label="neutrons")
+mm.add_node("electrons", label="electrons")
+mm.add_edge("atom", "nucleus", label="composition")
+mm.add_edge("nucleus", "protons", label="compositions")
+mm.add_edge("nucleus", "neutrons", label="composition")
+mm.add_edge("atom", "electrons", label="composition")
+pos = graphviz_layout(mm, prog="dot")
+node_labels = nx.get_node_attributes(mm, 'label')
+node_sizes = [len(label) * 500 for label in node_labels]
+edge_lbls = dict()
+for edge in mm.edges():
     node1, node2 = edge
-    edge_labels[edge] = G[node1][node2]['label']
-nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=8, edge_color="gray", arrows=True, arrowsize=20)
-nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red')'''
+    edge_lbls[edge] = G[node1][node2]['label']
+figure, axx = plt.subplots(figsize=(20,15))
+font_size=14
+nx.draw(mm, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=font_size, edge_color="gray", nodelist=list(mm.nodes()), ax=axx)
+nx.draw_networkx_edge_labels(mm, pos, edge_labels=edge_lbls, font_size=font_size, font_color='red', ax=axx)'''
 [topic]{topic}
 [context]{context}
 
 coded mind map:"""
 
-    
-#def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-3.5-turbo-0613'):
-def generateMindMap_mono_topic_old(name,text,temperature=0,model_name='gpt-4-0613'):
-
-    llm = ChatOpenAI(
-        temperature=temperature,
-        model_name=model_name
-    )
-
-    response=llm(
-        [
-            SystemMessage(content=system_message_mono_topic),
-            HumanMessage(content=text)
-        ]
-    )
-    exec(response.content)
-    print(response.content)
-    print(name)
-    return name.replace(" ", "_")+".png"
 
 def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-4-0613'):
-#def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-3.5-turbo-1106'):
 
-    llm = ChatOpenAI(
-        temperature=temperature,
-        model_name=model_name
+    #print(model_name)
+
+    messages=[]
+    messages.append(
+        {
+        "role": "system",
+        "content": template
+        }
     )
 
-    prompt = PromptTemplate.from_template(
-        template
+    user_content="{topic} "+name+" {context} "+text;
+    messages.append(
+        {
+            "role":"user",
+            "content": user_content
+        }
     )
-    prompt.format(topic=name, context=text)
+
+    #print(messages)
+
+    client=OpenAI()
     
-    llm_chain = LLMChain(
-        llm=llm, 
-        prompt=prompt)
-
-    response=llm_chain.invoke({"topic":name,"context":text})
-    file_name=name+".png"
-    full_response=response["text"]+"\nplt.savefig(\""+file_name+"\")"
-    exec(full_response)
-    return file_name
-    #return response['text']
-    #print(response.text)
-    # exec(response.content)
-    # print(response.content)
-    # print(name)
-    # return name.replace(" ", "_")+".png"
-
-#def generateMindMap_context_topic(name,text,temperature=0,model_name='gpt-3.5-turbo-0613'):
-def generateMindMap_context_topic(name,text,temperature=0,model_name='gpt-4-0613'):
-
-    llm = ChatOpenAI(
-        temperature=temperature,
-        model_name=model_name
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        temperature=0,
+        max_tokens=2000,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
     )
+    answer=response.choices[0].message.content
 
-    messages=[
-        SystemMessage(content=system_message_context_topic),
-    ]
+    timestamp = int(time.time())
+    last2 = timestamp % 100
 
-    prompt = HumanMessage(
-        content=human_message_template.format(topic=name, context=text)
-    )
-    messages.append(prompt)
+    suffix = str(last2)
+    file_name=name+"_"+suffix+".png"
+    answer=answer+"\nfigure.savefig(\""+file_name+"\")"
 
-    response=llm(messages)
-    exec(response.content)
-    return "./"+name.replace(" ", "_")+".png"
+    answer = answer.replace("figure", "fig" + suffix)\
+        .replace("axx", "ax" + suffix)
     
+    #print(answer)
+    exec(answer)
+
+    return file_name  
+
 def test():
     from dotenv import load_dotenv
     load_dotenv()
 
-    # name="atom"
-    # text="i need a Mind Map for the topic: "+name
-    # response=generateMindMap_mono_topic(name,text)
-    # print(response)
+    name="atom"
+    text="i need a Mind Map for the topic: "+name
+    response=generateMindMap_mono_topic(name,text)
+    print(response)
 
     # name="solar system"
     # text="i need a Mind Map for the topic: "+name
@@ -184,4 +115,4 @@ def test():
     # #print(full_response)
     # exec(full_response)
 
-test()
+#test()

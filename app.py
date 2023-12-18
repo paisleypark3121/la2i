@@ -27,11 +27,60 @@ from utilities.agent import *
 from utilities.MindMapGenerator import *
 from utilities.chromadb_manager import *
 
+from openai import OpenAI
+
 import chainlit as cl
 
 save_directory='./files'
 persist_directory = 'chroma'
 model_name="gpt-3.5-turbo-0613"
+
+system_message="Your role is to be a helpful assistant with a friendly, "\
+    "understanding, patient, and user-affirming tone. You should: "\
+    "explain topics in short, simple sentences; "\
+    "keep explanations to 2 or 3 sentences at most. "\
+    "If the user provides affirmative or brief responses, "\
+    "take the initiative to continue with relevant information. "\
+    "Check for user understanding after each brief explanation "\
+    "using varied and friendly-toned questions. "\
+    "Use ordered or unordered lists "\
+    "(if longer than 2 items, introduce them one by one and "\
+    "check for understanding before proceeding), or simple text in replies. "\
+    "Provide examples or metaphors if the user doesn't understand. "\
+    "Use the following additional [context] below (if present) to retrieve information; "\
+    "if you cannot retrieve any information from the [context] use your knowledge. "\
+    "[context] {context}"
+
+def setMessages(messages, rolling):
+    num_entries = len(messages)
+    num_couples = (num_entries - 1) // 2 
+
+    if num_couples <= rolling:
+        return messages  
+        
+    couples_to_remove = num_couples - rolling
+
+    removed_couples = 0
+    index = 1  
+    while removed_couples < couples_to_remove:
+        if messages[index]["role"] == "user" and messages[index + 1]["role"] == "assistant":
+            del messages[index]
+            del messages[index] 
+            removed_couples += 1
+        else:
+            index += 1
+
+    return messages
+
+rolling = 5
+
+messages=[]
+messages.append(
+    {
+      "role": "system",
+      "content": system_message
+    }
+)
 
 load_dotenv()
 
@@ -89,17 +138,28 @@ async def on_action(action):
     if isinstance(file,cl.types.AskFileResponse):
         local_file_name=pre_save_file(file.name,file.content)
 
-    agent=retrieval_agent(
-        file=local_file_name,
+    vectordb=create_vectordb_from_file(
+        filename=local_file_name,
         persist_directory=persist_directory,
         embedding=embedding,
         overwrite=True,
-        tool_name=file.name,
-        tool_description=file.name,
-        model_name=model_name)
+        chunk_size=500,
+        chunk_overlap=50)
+
+    retriever=vectordb.as_retriever()
+
+    # agent=retrieval_agent(
+    #     file=local_file_name,
+    #     persist_directory=persist_directory,
+    #     embedding=embedding,
+    #     overwrite=True,
+    #     tool_name=file.name,
+    #     tool_description=file.name,
+    #     model_name=model_name)
     
-    cl.user_session.set("agent", agent)
-    cl.user_session.set("tool", file.name)
+    #cl.user_session.set("agent", agent)
+    #cl.user_session.set("tool", file.name)
+    cl.user_session.set("retriever", retriever)
 
     await cl.Message(content=f"Executed {action.name}").send()
 
@@ -121,17 +181,28 @@ async def on_action(action):
 
         embedding = cl.user_session.get("embedding") 
 
-        agent=retrieval_agent(
-            file=local_file_name,
+        # agent=retrieval_agent(
+        #     file=local_file_name,
+        #     persist_directory=persist_directory,
+        #     embedding=embedding,
+        #     overwrite=True,
+        #     tool_name=os.path.basename(local_file_name),
+        #     tool_description=os.path.basename(local_file_name),
+        #     model_name=model_name)
+        
+        # cl.user_session.set("agent", agent)
+        # cl.user_session.set("tool", os.path.basename(local_file_name))
+
+        vectordb=create_vectordb_from_file(
+            filename=local_file_name,
             persist_directory=persist_directory,
             embedding=embedding,
             overwrite=True,
-            tool_name=os.path.basename(local_file_name),
-            tool_description=os.path.basename(local_file_name),
-            model_name=model_name)
-        
-        cl.user_session.set("agent", agent)
-        cl.user_session.set("tool", os.path.basename(local_file_name))
+            chunk_size=500,
+            chunk_overlap=50)
+
+        retriever=vectordb.as_retriever()
+        cl.user_session.set("retriever", retriever)
 
         await cl.Message(content=f"Executed {action.name}").send()
         
@@ -169,13 +240,14 @@ async def on_action(action):
         #response=generateMindMap_context_topic(name,text)
         response=generateMindMap_mono_topic(name,text)
         elements = [
-            cl.Image(name=name, display="inline", path=response)
+            cl.Image(name=name, display="inline", size="large", path=response)
         ]
         await cl.Message(content=name, elements=elements).send()
         os.remove(response)
 
 @cl.on_chat_start
 async def on_chat_start():
+    print("CHAT START: "+model_name)
     # Sending an action button within a chatbot message
     app_user = cl.user_session.get("user")
     await cl.Message(f"Hello {app_user.username}").send()
@@ -190,100 +262,80 @@ async def on_chat_start():
 
     embedding=OpenAIEmbeddings()
 
-    agent=retrieval_agent(
-        file=None,
-        persist_directory=None,
-        embedding=embedding,
-        overwrite=True,
-        tool_name=None,
-        tool_description=None,
-        model_name=model_name)
+    # agent=retrieval_agent(
+    #     file=None,
+    #     persist_directory=None,
+    #     embedding=embedding,
+    #     overwrite=True,
+    #     tool_name=None,
+    #     tool_description=None,
+    #     model_name=model_name)
+    client=OpenAI()
     
     cl.user_session.set("embedding", embedding)
-    cl.user_session.set("agent", agent)
+    #cl.user_session.set("agent", agent)
+    cl.user_session.set("client", client)
+    cl.user_session.set("messages", messages)
+    #cl.user_session.set("retriever", retriever)
     cl.user_session.set("topic", "TODO")
 
 @cl.on_message
 async def main(message: cl.Message):
 
-    agent = cl.user_session.get("agent")
-    tool = cl.user_session.get("tool")     
+    print("CHAT MAIN: "+model_name)
 
-    # print("***")
-    # print(agent.memory.buffer)
-    # print(message.content)
-    # print("***")
+    # agent = cl.user_session.get("agent")
+    # tool = cl.user_session.get("tool")     
+    client=cl.user_session.get("client")
+    messages=cl.user_session.get("messages")
+    retriever=cl.user_session.get("retriever")
 
-    if agent is not None:
-
-        answer_prefix_tokens=["FINAL", "ANSWER"]
-
-        prompt=message.content
-        if tool:
-            prompt="Please use the tool "+tool+" to produce the output for the user request: "+message.content
-            
-        response = await agent.acall(
-            prompt, 
-            callbacks=[cl.AsyncLangchainCallbackHandler(
-                stream_final_answer=True,
-                answer_prefix_tokens=answer_prefix_tokens
-            )])
-
-        answer = response["output"]
-
-        data = {
-            "name": "TODO",
-            "text": answer
+    prompt=message.content
+    messages.append(
+        {
+            "role":"user",
+            "content": prompt
         }
-        json_data = json.dumps(data)
+    )
 
-        actions = [
-            cl.Action(name="Text To Speech", value=answer, description="Text To Speech"),
-            cl.Action(name="Mind Map", value=json_data, description="Mind Map"),
-        ]
-        await cl.Message(content=answer, actions=actions).send()
+    if retriever is not None:
 
-    # source_documents = res["source_documents"]  # type: List[Document]
+        docs=retriever.get_relevant_documents(prompt)
+        #print(docs[0])
+        updated_system_message=system_message.replace("{context}", docs[0].page_content)
 
-    # text_elements = []  # type: List[cl.Text]
+        messages[0]["content"]=updated_system_message
+        
+    response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0,
+                max_tokens=400,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0
+            )
 
-    # if source_documents:
-    #     for source_idx, source_doc in enumerate(source_documents):
-    #         source_name = f"source_{source_idx}"
-    #         # Create the text element referenced in the message
-    #         text_elements.append(
-    #             cl.Text(content=source_doc.page_content, name=source_name)
-    #         )
-    #     source_names = [text_el.name for text_el in text_elements]
+    answer=response.choices[0].message.content
 
-    #     if source_names:
-    #         answer += f"\nSources: {', '.join(source_names)}"
-    #     else:
-    #         answer += "\nNo sources found"
+    messages.append(
+        {
+            "role":"assistant",
+            "content":answer
+        }
+    )
+    
+    messages=setMessages(messages,rolling)
+    cl.user_session.set("messages", messages)
 
-    #await cl.Message(content=answer, elements=text_elements).send()
+    data = {
+        "name": "TODO",
+        "text": answer
+    }
+    json_data = json.dumps(data)
 
-    # chain = cl.user_session.get("chain")  # type: ConversationalRetrievalChain
-    # cb = cl.AsyncLangchainCallbackHandler()
-
-    # res = await chain.acall(message.content, callbacks=[cb])
-    # answer = res["answer"]
-    # source_documents = res["source_documents"]  # type: List[Document]
-
-    # text_elements = []  # type: List[cl.Text]
-
-    # if source_documents:
-    #     for source_idx, source_doc in enumerate(source_documents):
-    #         source_name = f"source_{source_idx}"
-    #         # Create the text element referenced in the message
-    #         text_elements.append(
-    #             cl.Text(content=source_doc.page_content, name=source_name)
-    #         )
-    #     source_names = [text_el.name for text_el in text_elements]
-
-    #     if source_names:
-    #         answer += f"\nSources: {', '.join(source_names)}"
-    #     else:
-    #         answer += "\nNo sources found"
-
-    # await cl.Message(content=answer, elements=text_elements).send()
+    actions = [
+        cl.Action(name="Text To Speech", value=answer, description="Text To Speech"),
+        cl.Action(name="Mind Map", value=json_data, description="Mind Map"),
+    ]
+    await cl.Message(content=answer, actions=actions).send()
