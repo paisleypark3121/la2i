@@ -40,6 +40,46 @@ def get_youtube_transcript(url,language_code="en"):
 def vectordb_exists(persist_directory):
     return os.path.exists(persist_directory)
 
+def create_temp_vectordb_from_file(filename,embedding,chunk_size=1200,chunk_overlap=200):
+    
+    if filename.endswith('.txt'):
+        try:
+            loader = TextLoader(filename,encoding="utf-8")
+            documents = loader.load()
+        except Exception as e:
+            raise ValueError(f"It is not possible to load the file {filename}: {e}")
+    elif filename.endswith('.pdf'):
+        try:
+            loader = PyPDFLoader(filename)
+            documents = loader.load()
+        except Exception as e:
+            raise ValueError(f"It is not possible to load the file {filename}: {e}")
+    else:
+        raise ValueError(f"File extension {filename} not recognized: {e}")
+
+    if not documents:
+        raise ValueError(f"Document {filename} empty or invalid: {e}")
+
+    r_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap, 
+        length_function=len
+    )
+    splits = r_splitter.split_documents(documents)
+    
+    # # adding metadatas
+    # metadatas = [{"source": f"{i}-pl"} for i in range(len(splits))]
+
+    # persist to vectordb: in a notebook, we should call persist() to ensure the embeddings are written to disk
+    # This isn't necessary in a script: the database will be automatically persisted when the client object is destroyed
+    vectordb=Chroma.from_documents(
+        documents=splits, 
+        embedding=embedding, 
+        collection_metadata={"hnsw:space": "cosine"},
+    )
+
+    return vectordb
+
 def create_vectordb_from_file(filename,persist_directory,embedding,overwrite=False,chunk_size=1200,chunk_overlap=200):
     if vectordb_exists(persist_directory)==False or overwrite==True:
 

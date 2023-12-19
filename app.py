@@ -138,11 +138,17 @@ async def on_action(action):
     if isinstance(file,cl.types.AskFileResponse):
         local_file_name=pre_save_file(file.name,file.content)
 
-    vectordb=create_vectordb_from_file(
+    # vectordb=create_vectordb_from_file(
+    #     filename=local_file_name,
+    #     persist_directory=persist_directory,
+    #     embedding=embedding,
+    #     overwrite=True,
+    #     chunk_size=500,
+    #     chunk_overlap=50)
+
+    vectordb=create_temp_vectordb_from_file(
         filename=local_file_name,
-        persist_directory=persist_directory,
         embedding=embedding,
-        overwrite=True,
         chunk_size=500,
         chunk_overlap=50)
 
