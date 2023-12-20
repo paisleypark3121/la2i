@@ -6,6 +6,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from networkx.drawing.nx_agraph import graphviz_layout
 
+from io import BytesIO
+
 template = """You are a helpful assistant that generates a coded Mind Map given a specific [topic] and a [context].
 Each map has to contain a maximum of 3 concepts and all connections must be labelled.
 The output has to be the NetworkX python code needed to produce the mind map. This output has to contain only the code needed without any import.
@@ -81,18 +83,27 @@ def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-4-0613'):
 
     timestamp = int(time.time())
     last2 = timestamp % 100
-
     suffix = str(last2)
-    file_name=name+"_"+suffix+".png"
-    answer=answer+"\nfigure.savefig(\""+file_name+"\")"
 
-    answer = answer.replace("figure", "fig" + suffix)\
-        .replace("axx", "ax" + suffix)
+    exec(answer)
+    image_bytes_io = BytesIO()
+    plt.savefig(image_bytes_io, format="png")
+    image_bytes_io.seek(0)
+    image_content = image_bytes_io.read()
+    image_bytes_io.close()
+
+    return image_content
+
+    # file_name=name+"_"+suffix+".png"
+    # answer=answer+"\nfigure.savefig(\""+file_name+"\")"
+
+    # answer = answer.replace("figure", "fig" + suffix)\
+    #     .replace("axx", "ax" + suffix)
     
     #print(answer)
-    exec(answer)
+    #exec(answer)
 
-    return file_name  
+    #return file_name  
 
 def test():
     from dotenv import load_dotenv

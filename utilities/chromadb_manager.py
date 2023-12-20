@@ -40,7 +40,7 @@ def get_youtube_transcript(url,language_code="en"):
 def vectordb_exists(persist_directory):
     return os.path.exists(persist_directory)
 
-def create_temp_vectordb_from_file(filename,embedding,chunk_size=1200,chunk_overlap=200):
+def create_temp_vectordb_from_file(filename,embedding):
     
     if filename.endswith('.txt'):
         try:
@@ -59,6 +59,14 @@ def create_temp_vectordb_from_file(filename,embedding,chunk_size=1200,chunk_over
 
     if not documents:
         raise ValueError(f"Document {filename} empty or invalid: {e}")
+
+    if len(documents) < 5000:
+        chunk_size = 500
+        chunk_overlap = 50
+    else:
+        # Use the default values when the length is not smaller than 5000
+        chunk_size = 1200
+        chunk_overlap = 200
 
     r_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -185,6 +193,11 @@ def create_vectordb_from_texts(texts,persist_directory,embedding,overwrite=False
             persist_directory=persist_directory)
     else:
         return load_vectordb(persist_directory=persist_directory,embedding=embedding)
+
+def create_temp_vectordb_from_texts(texts,embedding):
+    return Chroma.from_texts(
+        texts=texts, 
+        embedding=embedding)
 
 def load_vectordb(persist_directory,embedding):
     if vectordb_exists(persist_directory):

@@ -7,6 +7,7 @@ from io import BytesIO
 import pygame
 
 from typing import List
+from PIL import Image, ImageDraw
 
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -26,6 +27,13 @@ from langchain.memory import ChatMessageHistory, ConversationBufferMemory
 from utilities.agent import *
 from utilities.MindMapGenerator import *
 from utilities.chromadb_manager import *
+
+import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
+import matplotlib
+import matplotlib.pyplot as plt
+import aiofiles
+
 
 from openai import OpenAI
 
@@ -148,9 +156,7 @@ async def on_action(action):
 
     vectordb=create_temp_vectordb_from_file(
         filename=local_file_name,
-        embedding=embedding,
-        chunk_size=500,
-        chunk_overlap=50)
+        embedding=embedding)
 
     retriever=vectordb.as_retriever()
 
@@ -233,9 +239,9 @@ async def on_action(action):
     
     topic = cl.user_session.get("topic")
     #print("TOPIC: "+topic)
-    content="Confirm the topic?"
+    content="Please confirm the topic"
     if topic!="TODO":
-        content+=" ("+topic+")"
+        content+=" (current topic is: "+topic+")"
     res = await cl.AskUserMessage(content=content, timeout=30).send()
     if res:
         data["name"]=res['content']
@@ -244,12 +250,18 @@ async def on_action(action):
         #print(topic)
         cl.user_session.set("topic", topic)
         #response=generateMindMap_context_topic(name,text)
-        response=generateMindMap_mono_topic(name,text)
+
+        msg = cl.Message(
+            content=f"Processing `{topic}`...", disable_human_feedback=True
+        )
+        await msg.send()
+
+        image_content=generateMindMap_mono_topic(name,text)
+
         elements = [
-            cl.Image(name=name, display="inline", size="large", path=response)
+            cl.Image(name="image", display="inline", size="large", content=image_content)
         ]
-        await cl.Message(content=name, elements=elements).send()
-        os.remove(response)
+        await cl.Message(content="MindMap for "+topic, elements=elements).send()
 
 @cl.on_chat_start
 async def on_chat_start():
