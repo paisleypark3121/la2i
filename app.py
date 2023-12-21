@@ -33,7 +33,6 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib
 import matplotlib.pyplot as plt
 import aiofiles
-import PyPDF2
 import fitz
 
 from openai import OpenAI
