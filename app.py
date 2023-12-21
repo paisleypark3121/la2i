@@ -32,7 +32,6 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib
 import matplotlib.pyplot as plt
-import aiofiles
 import fitz
 
 from openai import OpenAI
