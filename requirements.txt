@@ -1,6 +1,6 @@
 aiofiles==23.2.1
 chainlit==0.7.700
-chromadb==0.3.26
+chromadb
 gTTS==2.4.0
 langchain==0.0.352
 matplotlib==3.5.1
