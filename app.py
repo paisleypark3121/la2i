@@ -33,7 +33,8 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib
 import matplotlib.pyplot as plt
 import aiofiles
-
+import PyPDF2
+import fitz
 
 from openai import OpenAI
 
@@ -134,6 +135,14 @@ async def on_action(action):
         ).send()
 
     file = files[0]
+    
+    # pdf_document = fitz.open(stream=file.content, filetype="pdf")
+
+    # # Iterate through pages and extract text
+    # for page_num in range(len(pdf_document)):
+    #     page = pdf_document[page_num]
+    #     text = page.get_text()
+    #     print(text[0:100])
 
     msg = cl.Message(
         content=f"Processing `{file.name}`...", disable_human_feedback=True
@@ -144,36 +153,63 @@ async def on_action(action):
 
     #print(type(file))
     if isinstance(file,cl.types.AskFileResponse):
-        local_file_name=pre_save_file(file.name,file.content)
+        #local_file_name=pre_save_file(file.name,file.content)
+        #print(file.name)
+        #print(file.content[0:1000])
 
-    # vectordb=create_vectordb_from_file(
+        if file.name.endswith(".pdf"):
+            #print("PDF")
+            pdf_document = fitz.open(stream=file.content, filetype="pdf")
+            content=""
+            for page_num in range(len(pdf_document)):
+                page = pdf_document[page_num]
+                content = content + page.get_text()+"\n"
+        else:
+            #print("TXT") 
+            content=file.content
+            content = content.decode('utf-8')
+        
+        #print(content[0:200])
+        vectordb=create_vectordb_from_content(content,embedding)
+        retriever=vectordb.as_retriever()
+        cl.user_session.set("retriever", retriever)
+
+        # vectordb=create_vectordb(file.name,embedding)
+        # retriever=vectordb.as_retriever()
+        # cl.user_session.set("retriever", retriever)
+
+        await cl.Message(content=f"Executed {action.name}").send()
+    else:
+        await cl.Message(content=f"Error in executing {action.name}").send()
+
+    # # vectordb=create_vectordb_from_file(
+    # #     filename=local_file_name,
+    # #     persist_directory=persist_directory,
+    # #     embedding=embedding,
+    # #     overwrite=True,
+    # #     chunk_size=500,
+    # #     chunk_overlap=50)
+
+    # vectordb=create_temp_vectordb_from_file(
     #     filename=local_file_name,
-    #     persist_directory=persist_directory,
-    #     embedding=embedding,
-    #     overwrite=True,
-    #     chunk_size=500,
-    #     chunk_overlap=50)
+    #     embedding=embedding)
 
-    vectordb=create_temp_vectordb_from_file(
-        filename=local_file_name,
-        embedding=embedding)
+    # retriever=vectordb.as_retriever()
 
-    retriever=vectordb.as_retriever()
-
-    # agent=retrieval_agent(
-    #     file=local_file_name,
-    #     persist_directory=persist_directory,
-    #     embedding=embedding,
-    #     overwrite=True,
-    #     tool_name=file.name,
-    #     tool_description=file.name,
-    #     model_name=model_name)
+    # # agent=retrieval_agent(
+    # #     file=local_file_name,
+    # #     persist_directory=persist_directory,
+    # #     embedding=embedding,
+    # #     overwrite=True,
+    # #     tool_name=file.name,
+    # #     tool_description=file.name,
+    # #     model_name=model_name)
     
-    #cl.user_session.set("agent", agent)
-    #cl.user_session.set("tool", file.name)
-    cl.user_session.set("retriever", retriever)
+    # #cl.user_session.set("agent", agent)
+    # #cl.user_session.set("tool", file.name)
+    # cl.user_session.set("retriever", retriever)
 
-    await cl.Message(content=f"Executed {action.name}").send()
+    # await cl.Message(content=f"Executed {action.name}").send()
 
 @cl.action_callback("URL")
 async def on_action(action):

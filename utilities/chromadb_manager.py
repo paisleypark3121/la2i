@@ -1,27 +1,63 @@
 import os
-from dotenv import load_dotenv
 import re
-import shutil
+from dotenv import load_dotenv
+
+import io
+import fitz
+import pdfplumber
+
+import requests
+
+from youtube_transcript_api import YouTubeTranscriptApi
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-#from langchain.llms import OpenAI as LangChainOpenAI
-from langchain.chains import (
-    RetrievalQA,
-    ConversationalRetrievalChain
-)
-from langchain.document_loaders import (
-    TextLoader,
-    YoutubeLoader
-)
+from langchain.schema.document import Document
 
+def get_local_text(filename):
+    with open(filename, "r", encoding="utf-8") as local_file:
+        return local_file.read()
+    return None
+# filename="files/jokerbirot_space_musician_en.txt"
+# content=get_local_text(filename)
+# print(content[0:30])
 
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+def get_remote_text(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text        
+        #contenuto_file=response.text.encode('utf-8')
+    return None
+#url="https://www.gutenberg.org/cache/epub/61830/pg61830.txt"
+# url="https://raw.githubusercontent.com/paisleypark3121/la2i/main/files/jokerbirot_space_musician_en.txt"
+# content=get_remote_text(url)
+# print(content[0:30])
 
-from urllib.parse import urlparse
-import requests
+def get_local_pdf(filename):
+    pdf_text = ""
+    with fitz.open(filename) as pdf_document:
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document.load_page(page_num)
+            pdf_text += page.get_text() + "\n"  # Aggiungi un ritorno a capo tra le pagine
+    return pdf_text
+    return None
+# filename="files/DHCP.pdf"
+# content=get_local_pdf(filename)
+# print(content)
+
+def get_remote_pdf(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+            pdf_text = ""
+            for page in pdf.pages:
+                pdf_text += page.extract_text()
+            return pdf_text.strip()
+    return None
+# url="https://sds-platform-private.s3-us-east-2.amazonaws.com/uploads/PT741-Transcript.pdf"
+# content=get_remote_pdf(url)
+# print(content[0:1000])
 
 def extract_youtube_id(url):
     youtube_id_match = re.search(r'(?<=v=)[^&#]+', url)
@@ -29,57 +65,69 @@ def extract_youtube_id(url):
     return youtube_id_match.group(0) if youtube_id_match else None
 
 def get_youtube_transcript(url,language_code="en"):
-    loader = YoutubeLoader.from_youtube_url(
-        url,        
-        add_video_info=True,
-        language=[language_code, "id"],
-        translation=language_code,)
-    docs=loader.load()
-    return docs[0].page_content
-
-def vectordb_exists(persist_directory):
-    return os.path.exists(persist_directory)
-
-def create_temp_vectordb_from_file(filename,embedding):
+    id=extract_youtube_id(url)
+    transcript_list = YouTubeTranscriptApi.list_transcripts(id)
+    # for transcript in transcript_list:
+    #     print(
+    #         transcript.video_id,
+    #         transcript.language,
+    #         transcript.language_code,
+    #     )
+    transcript = transcript_list.find_transcript([language_code])
+    full_transcript = transcript.fetch()
     
-    if filename.endswith('.txt'):
-        try:
-            loader = TextLoader(filename,encoding="utf-8")
-            documents = loader.load()
-        except Exception as e:
-            raise ValueError(f"It is not possible to load the file {filename}: {e}")
-    elif filename.endswith('.pdf'):
-        try:
-            loader = PyPDFLoader(filename)
-            documents = loader.load()
-        except Exception as e:
-            raise ValueError(f"It is not possible to load the file {filename}: {e}")
+    concatenated_text = ""
+    for item in full_transcript:
+        concatenated_text += item['text'] + ' '
+    concatenated_text = concatenated_text.strip()
+
+    return concatenated_text
+# url="https://www.youtube.com/watch?v=AgZCmiC4Zr8"
+# content=get_youtube_transcript(url,language_code="it")
+# print(content[0:100])
+# url="https://www.youtube.com/watch?v=O0dUOtOIrfs"
+# content=get_youtube_transcript(url)
+# print(content[0:100])
+
+def create_vectordb(location,embedding):
+    
+    if location.startswith("http"):
+        if location.endswith(".txt"):
+            content=get_remote_text(location)
+        elif location.endswith(".pdf"):
+            content=get_remote_pdf(location)
+        elif "youtube.com" in location:
+            content=get_youtube_transcript(location)
+        else:
+            content=None
+    elif os.path.isfile(location):
+        if location.endswith(".txt"):
+            content=get_local_text(location)
+        elif location.endswith(".pdf"):
+            content=get_local_pdf(location)
     else:
-        raise ValueError(f"File extension {filename} not recognized: {e}")
+        content=None
 
-    if not documents:
-        raise ValueError(f"Document {filename} empty or invalid: {e}")
+    if content is None:
+        return None
 
-    if len(documents) < 5000:
+    if len(content) < 5000:
         chunk_size = 500
         chunk_overlap = 50
     else:
         # Use the default values when the length is not smaller than 5000
         chunk_size = 1200
         chunk_overlap = 200
-
-    r_splitter = RecursiveCharacterTextSplitter(
+        
+    text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap, 
         length_function=len
     )
-    splits = r_splitter.split_documents(documents)
     
-    # # adding metadatas
-    # metadatas = [{"source": f"{i}-pl"} for i in range(len(splits))]
-
-    # persist to vectordb: in a notebook, we should call persist() to ensure the embeddings are written to disk
-    # This isn't necessary in a script: the database will be automatically persisted when the client object is destroyed
+    texts = text_splitter.split_text(content)
+    splits = [Document(page_content=t) for t in texts]
+    
     vectordb=Chroma.from_documents(
         documents=splits, 
         embedding=embedding, 
@@ -88,177 +136,45 @@ def create_temp_vectordb_from_file(filename,embedding):
 
     return vectordb
 
-def create_vectordb_from_file(filename,persist_directory,embedding,overwrite=False,chunk_size=1200,chunk_overlap=200):
-    if vectordb_exists(persist_directory)==False or overwrite==True:
+def create_vectordb_from_content(content,embedding):
+    
+    if content is None:
+        return None
 
-        if vectordb_exists(persist_directory):
-            if os.path.isdir(persist_directory):
-                shutil.rmtree(persist_directory)
-
-        if filename.endswith('.txt'):
-            try:
-                loader = TextLoader(filename,encoding="utf-8")
-                documents = loader.load()
-            except Exception as e:
-                raise ValueError(f"Non è possibile caricare il file {filename}: {e}")
-        elif filename.endswith('.pdf'):
-            try:
-                loader = PyPDFLoader(filename)
-                documents = loader.load()
-            except Exception as e:
-                raise ValueError(f"Non è possibile caricare il file {filename}: {e}")
-        else:
-            raise ValueError(f"Estensione del file {filename} non riconosciuta: {e}")
-
-        if not documents:
-            raise ValueError(f"Il documento {filename} è vuoto o non valido: {e}")
-
-        r_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap, 
-            length_function=len
-        )
-        splits = r_splitter.split_documents(documents)
-        
-        # # adding metadatas
-        # metadatas = [{"source": f"{i}-pl"} for i in range(len(splits))]
-
-        # persist to vectordb: in a notebook, we should call persist() to ensure the embeddings are written to disk
-        # This isn't necessary in a script: the database will be automatically persisted when the client object is destroyed
-        vectordb=Chroma.from_documents(
-            documents=splits, 
-            embedding=embedding, 
-            #metadatas=metadatas,
-            persist_directory=persist_directory,
-            collection_metadata={"hnsw:space": "cosine"},
-        )
-        #vectordb.persist()
-
-        return vectordb
+    if len(content) < 5000:
+        chunk_size = 500
+        chunk_overlap = 50
     else:
-        return load_vectordb(persist_directory=persist_directory,embedding=embedding)
-
-def create_vectordb_from_files(files, persist_directory, embedding, overwrite=False, chunk_size=1200, chunk_overlap=200):
-    loaders = []
-    
-    for filename in files:
-        if filename.endswith('.txt'):
-            try:
-                loader = TextLoader(filename, encoding="utf-8")
-                loaders.append(loader)
-            except Exception as e:
-                raise ValueError(f"Non è possibile caricare il file {filename}: {e}")
-        elif filename.endswith('.pdf'):
-            try:
-                loader = PyPDFLoader(filename)
-                loaders.append(loader)
-            except Exception as e:
-                raise ValueError(f"Non è possibile caricare il file {filename}: {e}")
-        else:
-            raise ValueError(f"Estensione del file {filename} non riconosciuta.")
-    
-    docs = []
-    for loader in loaders:
-        try:
-            documents = loader.load()
-            if not documents:
-                raise ValueError(f"Il documento {filename} è vuoto o non valido.")
-            docs.extend(documents)
-        except Exception as e:
-            raise ValueError(f"Errore durante il caricamento del file {filename}: {e}")
-    
-    r_splitter = RecursiveCharacterTextSplitter(
+        # Use the default values when the length is not smaller than 5000
+        chunk_size = 1200
+        chunk_overlap = 200
+        
+    text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap, 
         length_function=len
     )
-    splits = r_splitter.split_documents(docs)
-
-    # # adding metadatas
-    # metadatas = [{"source": f"{i}-pl"} for i in range(len(splits))]
-
-    return Chroma.from_documents(
+    
+    texts = text_splitter.split_text(content)
+    splits = [Document(page_content=t) for t in texts]
+    
+    vectordb=Chroma.from_documents(
         documents=splits, 
         embedding=embedding, 
-        #metadatas=metadatas,
-        persist_directory=persist_directory
+        collection_metadata={"hnsw:space": "cosine"},
     )
 
-def create_vectordb_from_texts(texts,persist_directory,embedding,overwrite=False):
-    if vectordb_exists(persist_directory)==False or overwrite==True:
-        print("creating vectordb")
-        return Chroma.from_texts(
-            texts=texts, 
-            embedding=embedding,
-            persist_directory=persist_directory)
-    else:
-        return load_vectordb(persist_directory=persist_directory,embedding=embedding)
-
-def create_temp_vectordb_from_texts(texts,embedding):
-    return Chroma.from_texts(
-        texts=texts, 
-        embedding=embedding)
-
-def load_vectordb(persist_directory,embedding):
-    if vectordb_exists(persist_directory):
-        #print("vectordb already exists")
-        return Chroma(persist_directory=persist_directory, embedding_function=embedding)
-    else:
-        raise ValueError(f"VectorDB does not exist in {persist_directory}")
-
-def pre_save_file(location,content,overwrite=True):
-    save_directory="./files"
-    local_filename = os.path.join(save_directory, location)
-    if not os.path.exists(local_filename) or overwrite:
-        with open(local_filename, 'wb') as f:
-            f.write(content)    
-    return local_filename
-
-def save_file(location,language_code="en",overwrite=False):
-    #https://sds-platform-private.s3-us-east-2.amazonaws.com/uploads/PT717-Transcript.pdf
-    #https://www.gutenberg.org/cache/epub/1934/pg1934.txt
-    save_directory="./files"
-    parsed = urlparse(location)
-    if "youtube.com" in parsed.netloc or "youtu.be" in parsed.netloc:
-        transcript_content = get_youtube_transcript(location,language_code=language_code)
-        video_id = extract_youtube_id(location)
-        if video_id:
-            local_filename = os.path.join(save_directory, f"{video_id}.txt")
-        else:
-            local_filename = os.path.join(save_directory, "youtube_transcript.txt")
-        
-        with open(local_filename, 'w', encoding="utf-8") as f:
-            f.write(transcript_content)
-        return local_filename
-    elif bool(parsed.netloc):
-        local_filename = os.path.join(save_directory, os.path.basename(location))
-
-        if not os.path.exists(local_filename) or overwrite:
-            with requests.get(location, stream=True) as r:
-                r.raise_for_status()
-                with open(local_filename, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-    else:
-        if os.path.exists(location):
-            local_filename=location
-        else:
-            raise FileNotFoundError(f"File '{location}' not found.")
-    
-    return local_filename
-
-def do_query(vectordb,llm,query):
-    qa = RetrievalQA.from_chain_type(
-        llm=llm, 
-        chain_type="stuff", 
-        retriever=vectordb.as_retriever()
-    )    
-    return qa.run(query)
-
-def do_query(vectordb,llm,memory,query):
-    qa = ConversationalRetrievalChain.from_llm(
-        llm=llm, 
-        retriever=vectordb.as_retriever(),
-        memory=memory
-    )    
-    return qa.run(query)
+    return vectordb
+# load_dotenv()
+# #location="files/jokerbirot_space_musician_en.txt"
+# location="files/DHCP.pdf"
+# #location="https://raw.githubusercontent.com/paisleypark3121/la2i/main/files/jokerbirot_space_musician_en.txt"
+# #location="https://sds-platform-private.s3-us-east-2.amazonaws.com/uploads/PT741-Transcript.pdf"
+# #location="https://www.youtube.com/watch?v=O0dUOtOIrfs"
+# embeddings=OpenAIEmbeddings()
+# vectordb=create_vectordb(location,embeddings)
+# #print(vectordb)
+# retriever=vectordb.as_retriever()
+# prompt="who is DHCP?"
+# docs=retriever.get_relevant_documents(prompt)
+# print(docs[0])
