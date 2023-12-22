@@ -40,6 +40,7 @@ import chainlit as cl
 
 save_directory='./files'
 persist_directory = 'chroma'
+default_model_name="gpt-3.5-turbo-0613"
 model_name="gpt-3.5-turbo-0613"
 
 system_message="Your role is to be a helpful assistant with a friendly, "\
@@ -96,9 +97,11 @@ async def on_chat_start():
     global model_name
     load_dotenv()
     app_user = cl.user_session.get("user")
-    if app_user==os.environ.get('LA2I_USERNAME_DSA'):
+    #print("ON_CHAT_START: "+app_user.username)
+    #print("USER: "+os.environ.get('LA2I_USERNAME_DSA'))
+    if app_user.username==os.environ.get('LA2I_USERNAME_DSA'):
         model_name=os.environ.get('FINE_TUNED_MODEL')
-    #print("START: "+model_name)
+    print("ON_CHAT_START: "+model_name)
     #await cl.Message(f"Hello {app_user.username}").send()
 
 @cl.password_auth_callback
@@ -110,6 +113,7 @@ def auth_callback(username: str, password: str) -> Optional[cl.AppUser]:
     _password_dsa=os.environ.get('LA2I_PASSWORD_DSA')
     if (username.upper(), password) == (_username, _password):
         print("CALL: "+model_name)
+        model_name=default_model_name
         return cl.AppUser(username=_username, role="USER", provider="credentials")
     elif (username.upper(), password) == (_username_dsa, _password_dsa):
         model_name=os.environ.get('FINE_TUNED_MODEL')
@@ -254,6 +258,9 @@ async def on_action(action):
         
 @cl.action_callback("Text To Speech")
 async def on_action(action):
+    await cl.Message(content=f"Speaking...").send()
+    await cl.Message(content=f"...",disable_human_feedback=True).send()
+
     tts = gTTS(text=action.value, lang='en')
     fp = BytesIO()
     tts.write_to_fp(fp)
@@ -264,6 +271,8 @@ async def on_action(action):
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
+    
+    await cl.Message(content=f"Done").send()
 
 @cl.action_callback("Mind Map")
 async def on_action(action):
@@ -299,9 +308,15 @@ async def on_action(action):
 
 @cl.on_chat_start
 async def on_chat_start():
-    print("CHAT START: "+model_name)
+    global model_name
+    
     # Sending an action button within a chatbot message
     app_user = cl.user_session.get("user")
+    #print("APPUSER: "+app_user.username)
+    #print("LAUSER: "+os.environ.get('LA2I_USERNAME_DSA'))
+    if app_user.username==os.environ.get('LA2I_USERNAME_DSA'):
+        model_name=os.environ.get('FINE_TUNED_MODEL')
+    print("CHAT_START: "+model_name)
     await cl.Message(f"Hello {app_user.username}").send()
     
     actions = [
@@ -334,7 +349,7 @@ async def on_chat_start():
 @cl.on_message
 async def main(message: cl.Message):
 
-    print("CHAT MAIN: "+model_name)
+    print("CHAT_MAIN: "+model_name)
 
     # agent = cl.user_session.get("agent")
     # tool = cl.user_session.get("tool")     
