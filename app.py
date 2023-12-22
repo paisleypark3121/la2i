@@ -221,11 +221,11 @@ async def on_action(action):
 
     if response:
         location=response['content']
-        local_file_name=save_file(location=location)
+        #local_file_name=save_file(location=location)
         #print(local_file_name)
 
         msg = cl.Message(
-            content=f"Processing `{os.path.basename(local_file_name)}`...", disable_human_feedback=True
+            content=f"Processing url...", disable_human_feedback=True
         )
         await msg.send()
 
@@ -243,13 +243,9 @@ async def on_action(action):
         # cl.user_session.set("agent", agent)
         # cl.user_session.set("tool", os.path.basename(local_file_name))
 
-        vectordb=create_vectordb_from_file(
-            filename=local_file_name,
-            persist_directory=persist_directory,
-            embedding=embedding,
-            overwrite=True,
-            chunk_size=500,
-            chunk_overlap=50)
+        vectordb=create_vectordb(
+            location=location,
+            embedding=embedding,)
 
         retriever=vectordb.as_retriever()
         cl.user_session.set("retriever", retriever)
@@ -317,7 +313,7 @@ async def on_chat_start():
     if app_user.username==os.environ.get('LA2I_USERNAME_DSA'):
         model_name=os.environ.get('FINE_TUNED_MODEL')
     print("CHAT_START: "+model_name)
-    await cl.Message(f"Hello {app_user.username}").send()
+    await cl.Message(f"Hello {app_user.username.lower()}").send()
     
     actions = [
         cl.Action(name="Local File", value="load", description="Load Data from File"),
