@@ -4,7 +4,7 @@ chromadb
 gTTS==2.4.0
 langchain==0.0.352
 matplotlib==3.5.1
-pygraphviz
+networkx==3.2.1
 openai==1.6.0
 pdfplumber==0.10.3
 Pillow==10.1.0

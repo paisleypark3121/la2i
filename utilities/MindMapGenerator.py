@@ -3,37 +3,48 @@ from openai import OpenAI
 import time
 
 import networkx as nx
-#import matplotlib.pyplot as plt
-#from networkx.drawing.nx_agraph import graphviz_layout
-import pygraphviz as pgv
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
 
 from io import BytesIO
-
 
 template = """You are a helpful assistant that generates a coded Mind Map given a specific [topic] and a [context].
 Each map has to contain a maximum of 3 concepts and all connections must be labelled.
 The output has to be the NetworkX python code needed to produce the mind map. This output has to contain only the code needed without any import.
 As an example, the output has to start with: 
-graph = pgv.AGraph(strict=False, directed=True)
+mm = nx.Graph(); 
 As an example, if the user asks for: 
 [topic] atom
 [context] An atom is the fundamental building block of matter, consisting of two main components: electrons and nucleus. Electrons are negatively charged subatomic particles that orbit the nucleus in specific energy levels or electron shells; the nucleus is the central, densely packed core of an atom, where most of its mass is concentrated and contains two types of particles: protons (positively charged subatomic particles) and neutrons (electrically neutral subatomic particles).
 
 coded mind map:
-graph = pgv.AGraph(strict=False, directed=True)
-graph.add_node("atom", label="atom")
-graph.add_node("nucleus", label="nucleus")
-graph.add_node("protons", label="protons")
-graph.add_node("neutrons", label="neutrons")
-graph.add_node("electrons", label="electrons")
-graph.add_edge("atom", "nucleus", label="composition")
-graph.add_edge("nucleus", "protons", label="compositions")
-graph.add_edge("nucleus", "neutrons", label="composition")
-graph.add_edge("atom", "electrons", label="composition")
+mm = nx.Graph()
+mm.clear()
+mm.add_node("atom", label="atom")
+mm.add_node("nucleus", label="nucleus")
+mm.add_node("protons", label="protons")
+mm.add_node("neutrons", label="neutrons")
+mm.add_node("electrons", label="electrons")
+mm.add_edge("atom", "nucleus", label="composition")
+mm.add_edge("nucleus", "protons", label="compositions")
+mm.add_edge("nucleus", "neutrons", label="composition")
+mm.add_edge("atom", "electrons", label="composition")
+pos = graphviz_layout(mm, prog="dot")
+node_labels = nx.get_node_attributes(mm, 'label')
+node_sizes = [len(label) * 500 for label in node_labels]
+edge_lbls = dict()
+for edge in mm.edges():
+    node1, node2 = edge
+    edge_lbls[edge] = G[node1][node2]['label']
+figure, axx = plt.subplots(figsize=(20,15))
+font_size=14
+nx.draw(mm, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=font_size, edge_color="gray", nodelist=list(mm.nodes()), ax=axx)
+nx.draw_networkx_edge_labels(mm, pos, edge_labels=edge_lbls, font_size=font_size, font_color='red', ax=axx)'''
 [topic]{topic}
 [context]{context}
 
 coded mind map:"""
+
 
 def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-4-0613'):
 
@@ -69,23 +80,30 @@ def generateMindMap_mono_topic(name,text,temperature=0,model_name='gpt-4-0613'):
         presence_penalty=0
     )
     answer=response.choices[0].message.content
-    print(answer)
 
-    exec_globals = {'pgv': pgv}
-    exec(answer, exec_globals)
+    timestamp = int(time.time())
+    last2 = timestamp % 100
+    suffix = str(last2)
 
-    if 'graph' in exec_globals:
-        graph = exec_globals['graph']
-    else:
-        return "Error: 'graph' not defined in the executed code", 500
-
+    exec(answer)
     image_bytes_io = BytesIO()
-    graph.draw(image_bytes_io, format='png', prog='dot')
-
+    plt.savefig(image_bytes_io, format="png")
     image_bytes_io.seek(0)
     image_content = image_bytes_io.read()
     image_bytes_io.close()
+
     return image_content
+
+    # file_name=name+"_"+suffix+".png"
+    # answer=answer+"\nfigure.savefig(\""+file_name+"\")"
+
+    # answer = answer.replace("figure", "fig" + suffix)\
+    #     .replace("axx", "ax" + suffix)
+    
+    #print(answer)
+    #exec(answer)
+
+    #return file_name  
 
 def test():
     from dotenv import load_dotenv
