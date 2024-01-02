@@ -5,7 +5,6 @@ WORKDIR /code
 # Install system packages, including audio dependencies
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
-    apt-get install -y alsa-base alsa-utils && \
     apt-get clean
 
 COPY ./requirements.txt /code/requirements.txt
