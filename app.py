@@ -257,18 +257,36 @@ async def on_action(action):
     await cl.Message(content=f"Speaking...").send()
     await cl.Message(content=f"...",disable_human_feedback=True).send()
 
-    tts = gTTS(text=action.value, lang='en')
-    fp = BytesIO()
-    tts.write_to_fp(fp)
-    fp.seek(0)
-    pygame.init()
-    pygame.mixer.init()
-    pygame.mixer.music.load(fp)
-    pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
+    try:
+        tts = gTTS(text=action.value, lang='en')
+        fp = BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        pygame.init()
+        pygame.mixer.init()
+        pygame.mixer.music.load(fp)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
     
-    await cl.Message(content=f"Done").send()
+        await cl.Message(content=f"Done").send()
+    except Exception as e:
+        response = requests.post('https://gptutilities.replit.app/generate_sound', data={'text': action.value})
+
+        if response.status_code == 200:
+            audio_url = response.json().get('mp3_url')
+            
+            if audio_url:
+                elements = [
+                    cl.Text(name="Audio File", content=f"{audio_url}", display="inline")
+                ]
+                await cl.Message(
+                    content="Here is the audio file",
+                    elements=elements,
+                ).send()
+
+        else:
+            print(f"Failed to generate audio: {response.status_code} - {response.text}")
 
 @cl.action_callback("Mind Map")
 async def on_action(action):
