@@ -17,25 +17,25 @@ As an example, if the user asks for:
 [context] An atom is the fundamental building block of matter, consisting of two main components: electrons and nucleus. Electrons are negatively charged subatomic particles that orbit the nucleus in specific energy levels or electron shells; the nucleus is the central, densely packed core of an atom, where most of its mass is concentrated and contains two types of particles: protons (positively charged subatomic particles) and neutrons (electrically neutral subatomic particles).
 
 coded mind map:
-mm = nx.Graph()
-mm.clear()
-mm.add_node("atom", label="atom")
-mm.add_node("nucleus", label="nucleus")
-mm.add_node("protons", label="protons")
-mm.add_node("neutrons", label="neutrons")
-mm.add_node("electrons", label="electrons")
-mm.add_edge("atom", "nucleus", label="composition")
-mm.add_edge("nucleus", "protons", label="compositions")
-mm.add_edge("nucleus", "neutrons", label="composition")
-mm.add_edge("atom", "electrons", label="composition")
-pos = nx.spring_layout(mm)
-node_labels = nx.get_node_attributes(mm, 'label')
-node_sizes = [len(label) * 500 for label in node_labels]
-figure, axx = plt.subplots(figsize=(20, 15))
+G = nx.DiGraph()
+G.add_node("atom", label="atom")
+G.add_node("nucleus", label="nucleus")
+G.add_node("protons", label="protons")
+G.add_node("neutrons", label="neutrons")
+G.add_node("electrons", label="electrons")
+G.add_edge("atom", "nucleus", label="composition")
+G.add_edge("nucleus", "protons", label="compositions")
+G.add_edge("nucleus", "neutrons", label="composition")
+G.add_edge("atom", "electrons", label="composition")
+pos = nx.spring_layout(G)
+node_labels = nx.get_node_attributes(G, 'label')
+node_sizes = {node: len(label) * 500 for node, label in node_labels.items()}
 font_size = 14
-nx.draw(mm, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=font_size, edge_color="gray", nodelist=list(mm.nodes()), ax=axx)
-edge_lbls = nx.get_edge_attributes(mm, 'label')
-nx.draw_networkx_edge_labels(mm, pos, edge_labels=edge_lbls, font_size=font_size, font_color='red', ax=axx)'''
+figure, ax = plt.subplots(figsize=(20, 15))
+nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=list(node_sizes.values()), node_color="skyblue",
+        font_size=font_size, edge_color="gray", nodelist=list(G.nodes()), ax=ax)
+edge_labels = nx.get_edge_attributes(G, 'label')
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=font_size, font_color='red', ax=ax)'''
 [topic]{topic}
 [context]{context}
 
