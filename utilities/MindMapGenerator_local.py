@@ -4,6 +4,7 @@ import time
 
 import networkx as nx
 import matplotlib.pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
 
 from io import BytesIO
 
@@ -28,13 +29,16 @@ mm.add_edge("atom", "nucleus", label="composition")
 mm.add_edge("nucleus", "protons", label="compositions")
 mm.add_edge("nucleus", "neutrons", label="composition")
 mm.add_edge("atom", "electrons", label="composition")
-pos = nx.spring_layout(mm)
+pos = graphviz_layout(mm, prog="dot")
 node_labels = nx.get_node_attributes(mm, 'label')
 node_sizes = [len(label) * 500 for label in node_labels]
-figure, axx = plt.subplots(figsize=(20, 15))
-font_size = 14
+edge_lbls = dict()
+for edge in mm.edges():
+    node1, node2 = edge
+    edge_lbls[edge] = G[node1][node2]['label']
+figure, axx = plt.subplots(figsize=(20,15))
+font_size=14
 nx.draw(mm, pos, with_labels=True, font_weight='bold', node_size=node_sizes, node_color="skyblue", font_size=font_size, edge_color="gray", nodelist=list(mm.nodes()), ax=axx)
-edge_lbls = nx.get_edge_attributes(mm, 'label')
 nx.draw_networkx_edge_labels(mm, pos, edge_labels=edge_lbls, font_size=font_size, font_color='red', ax=axx)'''
 [topic]{topic}
 [context]{context}
